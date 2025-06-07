@@ -8,6 +8,16 @@
           <h1 class="header-title">Upload Artikel dari Excel</h1>
         </div>
 
+        <!-- Token Input -->
+        <div class="token-section">
+          <label for="token" class="token-label">Token Hashnode Anda:</label>
+          <input type="text" id="token" v-model="token" class="token-input" placeholder="Masukkan token Hashnode Anda">
+          <button class="save-token-button" @click="saveToken">
+            <i class="fas fa-save"></i>
+            Simpan Token
+          </button>
+        </div>
+
         <!-- Drop Zone -->
         <div class="drop-zone" 
              @dragover.prevent 
@@ -55,7 +65,8 @@
 export default {
   data() {
     return {
-      selectedFile: null
+      selectedFile: null,
+      token: localStorage.getItem("hashnode_token") || ""
     }
   },
   methods: {
@@ -73,8 +84,21 @@ export default {
     },
     uploadFile() {
       if (this.selectedFile) {
-        // Upload logic here
+        if (!this.token) {
+          alert("Silakan isi token Hashnode terlebih dahulu.")
+          return
+        }
+        // Lanjutkan logika upload, misalnya ke server atau API Hashnode
         console.log("Uploading file:", this.selectedFile.name)
+        console.log("Using token:", this.token)
+      }
+    },
+    saveToken() {
+      if (this.token) {
+        localStorage.setItem("hashnode_token", this.token)
+        alert("Token berhasil disimpan!")
+      } else {
+        alert("Token tidak boleh kosong.")
       }
     }
   }
@@ -126,6 +150,45 @@ export default {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
+}
+
+/* Token Section */
+.token-section {
+  padding: 20px 30px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.token-label {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.token-input {
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.save-token-button {
+  align-self: flex-start;
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s ease;
+}
+
+.save-token-button:hover {
+  background: #2980b9;
 }
 
 /* Drop Zone Styles */
