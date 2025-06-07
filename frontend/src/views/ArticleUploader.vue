@@ -83,15 +83,38 @@ export default {
       }
     },
     uploadFile() {
-      if (this.selectedFile) {
-        if (!this.token) {
-          alert("Silakan isi token Hashnode terlebih dahulu.")
-          return
-        }
-        // Lanjutkan logika upload, misalnya ke server atau API Hashnode
-        console.log("Uploading file:", this.selectedFile.name)
-        console.log("Using token:", this.token)
+      if (!this.selectedFile || !this.token) {
+        alert("Silakan pilih file dan isi token terlebih dahulu.");
+        return;
       }
+
+      const formData = new FormData();
+      formData.append("file", this.selectedFile);
+      formData.append("token", this.token);
+
+      fetch("http://localhost:8000/api/upload-excel", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json"
+        },
+        body: formData,
+      })
+        .then(async (res) => {
+          const contentType = res.headers.get("content-type") || "";
+
+          if (res.ok) {
+            alert("✅ File berhasil di-upload dan diproses!");
+          } else if (contentType.includes("application/json")) {
+            const err = await res.json();
+            alert("❌ Gagal upload: " + (err.message || JSON.stringify(err)));
+          } else {
+            const errText = await res.text();
+            alert("❌ Gagal upload (non-JSON): " + errText);
+          }
+        })
+        .catch((err) => {
+          alert("❌ Terjadi kesalahan: " + err.message);
+        });
     },
     saveToken() {
       if (this.token) {
