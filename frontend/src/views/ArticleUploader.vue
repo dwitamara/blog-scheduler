@@ -8,45 +8,46 @@
           <h1 class="header-title">Upload Artikel dari Excel</h1>
         </div>
 
-        <!-- Token Input -->
-        <div class="token-section">
-          <label for="token" class="token-label">Token Hashnode Anda:</label>
-          <input type="text" id="token" v-model="token" class="token-input" placeholder="Masukkan token Hashnode Anda">
+<!-- Token & Publish ID Input -->
+<div class="token-section">
+  <label for="token" class="token-label">Token Hashnode Anda:</label>
+  <input type="text" id="token" v-model="token" class="token-input" placeholder="Masukkan token Hashnode Anda">
 
-          <button class="save-token-button" @click="saveToken">
-            <i class="fas fa-save"></i>
-            Simpan Token
-          </button>
+  <label for="publishId" class="token-label">Publish ID:</label>
+  <input type="text" id="publishId" v-model="publishId" class="token-input" placeholder="Masukkan publish ID Anda">
+</div>
 
-          <label for="publishId" class="token-label">Publish ID (Opsional):</label>
-          <input type="text" id="publishId" v-model="publishId" class="token-input" placeholder="Masukkan publish ID jika ada">
 
-          <button class="save-token-button" @click="savePublishId">
-            <i class="fas fa-save"></i>
-            Simpan Publish ID
-          </button>
-        </div>
-
-        <!-- Drop Zone -->
-        <div class="drop-zone" @dragover.prevent @drop.prevent="handleDrop" @click="triggerFileInput">
-          <input type="file" ref="fileInput" @change="handleFile" accept=".xlsx,.xls" class="hidden-input" />
-          <div class="drop-content">
-            <i class="fas fa-file-excel file-icon"></i>
-            <div class="instruction-text">
-              <p class="main-instruction">Drag & drop file Excel di sini</p>
-              <p class="sub-instruction">atau klik untuk memilih file</p>
+        <!-- Upload Box -->
+        <div class="upload-box">
+          <div v-if="!selectedFile" class="upload-content">
+            <div class="drop-zone" @dragover.prevent @drop.prevent="handleDrop" @click="triggerFileInput">
+              <input type="file" ref="fileInput" @change="handleFile" accept=".xlsx,.xls" class="hidden-input" />
+              <div class="drop-content">
+                <i class="fas fa-file-excel file-icon"></i>
+                <p class="main-instruction">Drag & drop file Excel di sini</p>
+                <p class="sub-instruction">atau klik untuk memilih file</p>
+              </div>
             </div>
           </div>
-          <div v-if="selectedFile" class="file-preview">
-            <i class="fas fa-check-circle check-icon"></i>
-            <span class="file-name">{{ selectedFile.name }}</span>
+
+          <!-- File Preview -->
+          <div v-else class="upload-content">
+            <div class="file-preview-minimal">
+              <i class="fas fa-file-excel file-icon-small"></i>
+              <span class="file-name">{{ selectedFile.name }}</span>
+              <button class="delete-file-btn" @click="removeFile">
+                <i class="fas fa-times"></i> Hapus File
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- Save as Draft Button -->
-        <button class="upload-button" :class="{ disabled: !selectedFile }" @click="saveAsDraft">
+        <button class="upload-button" :disabled="!selectedFile || loading" @click="saveAsDraft">
           <i class="fas fa-save button-icon"></i>
-          <span>Save as Draft</span>
+          <span v-if="!loading">Save as Draft</span>
+          <span v-else>Uploading...</span>
         </button>
 
         <!-- Footer -->
@@ -66,77 +67,78 @@ export default {
   data() {
     return {
       selectedFile: null,
-      token: localStorage.getItem("hashnode_token") || "",
-      publishId: localStorage.getItem("hashnode_publish_id") || ""
+      token: '',
+      publishId: '',
+      loading: false,
+      statusMessage: '',
+      isSuccess: false,
+      isError: false
     };
   },
   methods: {
+    handleFile(event) {
+      this.selectedFile = event.target.files[0];
+    },
+    handleDrop(e) {
+      const file = e.dataTransfer.files[0];
+      if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+        this.selectedFile = file;
+      }
+    },
     triggerFileInput() {
       this.$refs.fileInput.click();
     },
-    handleFile(e) {
-      this.selectedFile = e.target.files[0];
-    },
-    handleDrop(e) {
-      const files = e.dataTransfer.files;
-      if (files.length) {
-        this.selectedFile = files[0];
+    removeFile() {
+      this.selectedFile = null;
+      if (this.$refs.fileInput) {
+        this.$refs.fileInput.value = null;
       }
     },
-    saveAsDraft() {
-      if (!this.selectedFile || !this.token) {
-        alert("Silakan pilih file dan isi token terlebih dahulu.");
-        return;
-      }
+async saveAsDraft() {
+  if (!this.selectedFile || !this.token) {
+    this.setStatus('Token dan file wajib diisi.', false);
+    return;
+  }
 
-      const formData = new FormData();
-      formData.append("file", this.selectedFile);
-      formData.append("token", this.token);
-      formData.append("publish_id", this.publishId);
+  const formData = new FormData();
+  formData.append('xlsx_file', this.selectedFile);
+  formData.append('token', this.token);
+  formData.append('publish_id', this.publishId);
 
-      fetch("http://localhost:8000/api/upload-excel", {
-        method: "POST",
-        headers: {
-          Accept: "application/json"
-        },
-        body: formData
-      })
-        .then(async (res) => {
-          const contentType = res.headers.get("content-type") || "";
+  this.loading = true;
 
-          if (res.ok) {
-            alert("✅ Artikel disimpan sebagai draft!");
-          } else if (contentType.includes("application/json")) {
-            const err = await res.json();
-            alert("❌ Gagal menyimpan draft: " + (err.message || JSON.stringify(err)));
-          } else {
-            const errText = await res.text();
-            alert("❌ Gagal menyimpan draft (non-JSON): " + errText);
-          }
-        })
-        .catch((err) => {
-          alert("❌ Terjadi kesalahan: " + err.message);
-        });
-    },
-    saveToken() {
-      if (this.token) {
-        localStorage.setItem("hashnode_token", this.token);
-        alert("Token berhasil disimpan!");
-      } else {
-        alert("Token tidak boleh kosong.");
-      }
-    },
-    savePublishId() {
-      if (this.publishId) {
-        localStorage.setItem("hashnode_publish_id", this.publishId);
-        alert("Publish ID berhasil disimpan!");
-      } else {
-        alert("Publish ID tidak boleh kosong.");
-      }
+  try {
+    const response = await fetch('http://127.0.0.1:8000/api/upload-excel', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json();
+    console.log("HASIL:", result); // Tambahan debug
+
+    if (response.ok) {
+      this.setStatus(result.message || 'Berhasil diupload!', true);
+      this.resetForm(); // Reset file dan input
+    } else {
+      this.setStatus(result.message || 'Gagal mengunggah.', false);
+    }
+  } catch (error) {
+    console.error("Upload error:", error); // Untuk debug DevTools
+    this.setStatus('Terjadi kesalahan saat mengunggah.', false);
+  } finally {
+    this.loading = false;
+  }
+},
+
+    setStatus(message, success) {
+      this.statusMessage = message;
+      this.isSuccess = success;
+      this.isError = !success;
     }
   }
 };
 </script>
+
 
 <style scoped>
 .fullscreen-bg {
@@ -267,26 +269,40 @@ export default {
   color: #7f8c8d;
 }
 
-.file-preview {
-  margin-top: 20px;
+.file-preview-minimal {
+  margin: 20px 30px;
   padding: 10px 15px;
-  background: #e8f4fd;
+  background: #ecf0f1;
   border-radius: 6px;
-  color: #3498db;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  color: #2c3e50;
+  border: 1px solid #dcdde1;
 }
 
-.check-icon {
+.file-icon-small {
+  font-size: 1.5rem;
   color: #27ae60;
-  margin-right: 8px;
+  margin-right: 10px;
 }
 
-.file-name {
+.file-preview-minimal .file-name {
+  flex: 1;
   font-size: 0.95rem;
   word-break: break-word;
-  text-align: center;
+}
+
+.remove-icon {
+  color: #e74c3c;
+  font-size: 1.2rem;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: color 0.2s ease;
+}
+
+.remove-icon:hover {
+  color: #c0392b;
 }
 
 .upload-button {

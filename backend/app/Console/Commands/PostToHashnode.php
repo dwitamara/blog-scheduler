@@ -27,7 +27,7 @@ class PostToHashnode extends Command
         foreach ($files as $file) {
             $post = json_decode(file_get_contents($file), true);
 
-            if (!$post || !isset($post['title'], $post['content'])) {
+            if (!$post || !isset($post['title'], $post['image'], $post['content'])) {
                 $this->error("Invalid post format in: $file");
                 continue;
             }
