@@ -1,4 +1,6 @@
-*
-!private/
-!public/
-!.gitignore
+/storage/*
+!/storage/app/
+/storage/app/*
+!/storage/app/queue/
+/storage/app/queue/*
+!/storage/app/queue/*.json
