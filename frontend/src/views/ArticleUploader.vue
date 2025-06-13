@@ -12,22 +12,24 @@
         <div class="token-section">
           <label for="token" class="token-label">Token Hashnode Anda:</label>
           <input type="text" id="token" v-model="token" class="token-input" placeholder="Masukkan token Hashnode Anda">
+
           <button class="save-token-button" @click="saveToken">
             <i class="fas fa-save"></i>
             Simpan Token
           </button>
+
+          <label for="publishId" class="token-label">Publish ID (Opsional):</label>
+          <input type="text" id="publishId" v-model="publishId" class="token-input" placeholder="Masukkan publish ID jika ada">
+
+          <button class="save-token-button" @click="savePublishId">
+            <i class="fas fa-save"></i>
+            Simpan Publish ID
+          </button>
         </div>
 
         <!-- Drop Zone -->
-        <div class="drop-zone" 
-             @dragover.prevent 
-             @drop.prevent="handleDrop"
-             @click="triggerFileInput">
-          <input type="file" 
-                 ref="fileInput"
-                 @change="handleFile" 
-                 accept=".xlsx,.xls" 
-                 class="hidden-input" />
+        <div class="drop-zone" @dragover.prevent @drop.prevent="handleDrop" @click="triggerFileInput">
+          <input type="file" ref="fileInput" @change="handleFile" accept=".xlsx,.xls" class="hidden-input" />
           <div class="drop-content">
             <i class="fas fa-file-excel file-icon"></i>
             <div class="instruction-text">
@@ -41,12 +43,10 @@
           </div>
         </div>
 
-        <!-- Upload Button -->
-        <button class="upload-button" 
-                :class="{ disabled: !selectedFile }"
-                @click="uploadFile">
-          <i class="fas fa-cloud-upload-alt button-icon"></i>
-          <span>Upload Sekarang</span>
+        <!-- Save as Draft Button -->
+        <button class="upload-button" :class="{ disabled: !selectedFile }" @click="saveAsDraft">
+          <i class="fas fa-save button-icon"></i>
+          <span>Save as Draft</span>
         </button>
 
         <!-- Footer -->
@@ -66,23 +66,24 @@ export default {
   data() {
     return {
       selectedFile: null,
-      token: localStorage.getItem("hashnode_token") || ""
-    }
+      token: localStorage.getItem("hashnode_token") || "",
+      publishId: localStorage.getItem("hashnode_publish_id") || ""
+    };
   },
   methods: {
     triggerFileInput() {
-      this.$refs.fileInput.click()
+      this.$refs.fileInput.click();
     },
     handleFile(e) {
-      this.selectedFile = e.target.files[0]
+      this.selectedFile = e.target.files[0];
     },
     handleDrop(e) {
-      const files = e.dataTransfer.files
+      const files = e.dataTransfer.files;
       if (files.length) {
-        this.selectedFile = files[0]
+        this.selectedFile = files[0];
       }
     },
-    uploadFile() {
+    saveAsDraft() {
       if (!this.selectedFile || !this.token) {
         alert("Silakan pilih file dan isi token terlebih dahulu.");
         return;
@@ -91,25 +92,26 @@ export default {
       const formData = new FormData();
       formData.append("file", this.selectedFile);
       formData.append("token", this.token);
+      formData.append("publish_id", this.publishId);
 
       fetch("http://localhost:8000/api/upload-excel", {
         method: "POST",
         headers: {
-          "Accept": "application/json"
+          Accept: "application/json"
         },
-        body: formData,
+        body: formData
       })
         .then(async (res) => {
           const contentType = res.headers.get("content-type") || "";
 
           if (res.ok) {
-            alert("✅ File berhasil di-upload dan diproses!");
+            alert("✅ Artikel disimpan sebagai draft!");
           } else if (contentType.includes("application/json")) {
             const err = await res.json();
-            alert("❌ Gagal upload: " + (err.message || JSON.stringify(err)));
+            alert("❌ Gagal menyimpan draft: " + (err.message || JSON.stringify(err)));
           } else {
             const errText = await res.text();
-            alert("❌ Gagal upload (non-JSON): " + errText);
+            alert("❌ Gagal menyimpan draft (non-JSON): " + errText);
           }
         })
         .catch((err) => {
@@ -118,18 +120,25 @@ export default {
     },
     saveToken() {
       if (this.token) {
-        localStorage.setItem("hashnode_token", this.token)
-        alert("Token berhasil disimpan!")
+        localStorage.setItem("hashnode_token", this.token);
+        alert("Token berhasil disimpan!");
       } else {
-        alert("Token tidak boleh kosong.")
+        alert("Token tidak boleh kosong.");
+      }
+    },
+    savePublishId() {
+      if (this.publishId) {
+        localStorage.setItem("hashnode_publish_id", this.publishId);
+        alert("Publish ID berhasil disimpan!");
+      } else {
+        alert("Publish ID tidak boleh kosong.");
       }
     }
   }
-}
+};
 </script>
 
 <style scoped>
-/* Base Styles */
 .fullscreen-bg {
   position: fixed;
   top: 0;
@@ -156,7 +165,6 @@ export default {
   overflow: hidden;
 }
 
-/* Header Styles */
 .card-header {
   padding: 25px;
   text-align: center;
@@ -175,7 +183,6 @@ export default {
   margin: 0;
 }
 
-/* Token Section */
 .token-section {
   padding: 20px 30px 0;
   display: flex;
@@ -214,7 +221,6 @@ export default {
   background: #2980b9;
 }
 
-/* Drop Zone Styles */
 .drop-zone {
   padding: 30px;
   cursor: pointer;
@@ -279,11 +285,10 @@ export default {
 
 .file-name {
   font-size: 0.95rem;
-  word-break: break-all;
+  word-break: break-word;
   text-align: center;
 }
 
-/* Button Styles */
 .upload-button {
   width: calc(100% - 60px);
   margin: 0 30px 30px;
@@ -313,7 +318,6 @@ export default {
   opacity: 0.7;
 }
 
-/* Footer Styles */
 .card-footer {
   padding: 15px;
   text-align: center;
@@ -333,42 +337,5 @@ export default {
 .info-icon {
   margin-right: 6px;
   color: #3498db;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 480px) {
-  .upload-container {
-    padding: 15px;
-  }
-  
-  .card-header {
-    padding: 20px;
-  }
-  
-  .header-icon {
-    font-size: 2.2rem;
-  }
-  
-  .header-title {
-    font-size: 1.3rem;
-  }
-  
-  .drop-zone {
-    padding: 20px;
-  }
-  
-  .drop-content {
-    padding: 30px 15px;
-  }
-  
-  .file-icon {
-    font-size: 2.8rem;
-  }
-  
-  .upload-button {
-    width: calc(100% - 40px);
-    margin: 0 20px 20px;
-    padding: 12px;
-  }
 }
 </style>
