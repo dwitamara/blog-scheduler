@@ -14,11 +14,10 @@ class PostToHashnode extends Command
     {
         $apiToken = env('HASHNODE_API_TOKEN');
         $publicationId = env('HASHNODE_PUBLICATION_ID');
-        
+
         $queuePath = storage_path('app/queue');
         $files = glob($queuePath . '/*.json');
 
-        $files = glob($queuePath . '/*.json');
         if (empty($files)) {
             $this->info("No posts in queue.");
             return;
@@ -34,42 +33,48 @@ class PostToHashnode extends Command
 
             $this->info("Posting: " . $post['title']);
 
+            // Buat konten Markdown yang menyisipkan gambar dan isi konten
+            $contentMarkdown = <<<MD
+![Gambar]( {$post['image']} )
+
+{$post['content']}
+MD;
+
             $mutation = <<<GQL
-            mutation CreateDraft(\$input: CreateDraftInput!) {
-                createDraft(input: \$input) {
-                    draft {
-                    title
-                    slug
-                    }
-                }
-            }
-            GQL;
+mutation CreateDraft(\$input: CreateDraftInput!) {
+  createDraft(input: \$input) {
+    draft {
+      title
+      slug
+    }
+  }
+}
+GQL;
 
             $variables = [
                 'input' => [
                     'title' => $post['title'],
-                    'contentMarkdown' => $post['content'],
+                    'contentMarkdown' => $contentMarkdown,
                     'publicationId' => $publicationId,
                 ]
             ];
 
-
             $response = Http::withHeaders([
                 'Authorization' => $apiToken,
+                'Content-Type' => 'application/json',
             ])->post('https://gql.hashnode.com/', [
                 'query' => $mutation,
                 'variables' => $variables,
             ]);
 
-
             if ($response->successful()) {
                 $data = $response->json();
-                if ($data['data']['createDraft']['draft']) {
+                if (!empty($data['data']['createDraft']['draft'])) {
                     $this->info("✅ Successfully posted: " . $post['title']);
                     unlink($file); // Remove from queue
                 } else {
                     $this->error("❌ Failed to post: " . $post['title']);
-                    $this->error($data['data']['createDraft']['message']);
+                    $this->line(print_r($data, true));
                 }
             } else {
                 $this->error("HTTP Error: " . $response->status());
@@ -77,5 +82,4 @@ class PostToHashnode extends Command
             }
         }
     }
-
 }
