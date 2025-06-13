@@ -13,11 +13,12 @@ class Kernel extends ConsoleKernel
 
     protected function schedule(Schedule $schedule): void
     {
-        // Schedule tasks here if needed
+        // Schedule logic here if needed
     }
 
     protected function commands(): void
     {
         $this->load(__DIR__.'/Commands');
+        require base_path('routes/console.php');
     }
 }

@@ -12,58 +12,70 @@ class PostToHashnode extends Command
 
     public function handle()
     {
+        $apiToken = env('HASHNODE_API_TOKEN');
+        $publicationId = env('HASHNODE_PUBLICATION_ID');
+        
         $queuePath = storage_path('app/queue');
-        if (!is_dir($queuePath)) {
-            $this->error('Queue folder does not exist.');
+        $files = glob($queuePath . '/*.json');
+
+        $files = glob($queuePath . '/*.json');
+        if (empty($files)) {
+            $this->info("No posts in queue.");
             return;
         }
 
-        $files = glob("$queuePath/*.json");
         foreach ($files as $file) {
-            $data = json_decode(file_get_contents($file), true);
+            $post = json_decode(file_get_contents($file), true);
 
-            $this->info("Posting: " . $data['title']);
+            if (!$post || !isset($post['title'], $post['content'])) {
+                $this->error("Invalid post format in: $file");
+                continue;
+            }
+
+            $this->info("Posting: " . $post['title']);
 
             $mutation = <<<GQL
-mutation CreateDraft(\$input: CreateDraftInput!) {
-  createDraft(input: \$input) {
-    post {
-      id
-      title
-      slug
-    }
-  }
-}
-GQL;
+            mutation CreateDraft(\$input: CreateDraftInput!) {
+                createDraft(input: \$input) {
+                    draft {
+                    title
+                    slug
+                    }
+                }
+            }
+            GQL;
 
             $variables = [
                 'input' => [
-                    'title' => $data['title'],
-                    'contentMarkdown' => strip_tags($data['content']),
-                    'coverImageOptions' => [
-                        'coverImageURL' => $data['image'] ?? null
-                    ],
-                    'publicationId' => env('HASHNODE_PUBLICATION_ID'),
+                    'title' => $post['title'],
+                    'contentMarkdown' => $post['content'],
+                    'publicationId' => $publicationId,
                 ]
             ];
 
+
             $response = Http::withHeaders([
-                'Authorization' => env('HASHNODE_API_TOKEN'),
-                'Content-Type' => 'application/json'
-            ])->post('https://gql.hashnode.com', [
+                'Authorization' => $apiToken,
+            ])->post('https://gql.hashnode.com/', [
                 'query' => $mutation,
-                'variables' => $variables
+                'variables' => $variables,
             ]);
 
-            $body = $response->json();
 
-            if (isset($body['errors'])) {
-                $this->error("Failed: " . $data['title']);
-                $this->error(json_encode($body, JSON_PRETTY_PRINT));
+            if ($response->successful()) {
+                $data = $response->json();
+                if ($data['data']['createDraft']['draft']) {
+                    $this->info("✅ Successfully posted: " . $post['title']);
+                    unlink($file); // Remove from queue
+                } else {
+                    $this->error("❌ Failed to post: " . $post['title']);
+                    $this->error($data['data']['createDraft']['message']);
+                }
             } else {
-                $this->info("✅ Successfully posted draft: " . $data['title']);
-                unlink($file); // delete file after successful posting
+                $this->error("HTTP Error: " . $response->status());
+                $this->line("Response: " . $response->body());
             }
         }
     }
+
 }

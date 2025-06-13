@@ -17,7 +17,6 @@ $app = Application::configure(basePath: dirname(__DIR__))
         //
     })->create();
 
-    
 $app->singleton(
     Illuminate\Contracts\Console\Kernel::class,
     App\Console\Kernel::class
