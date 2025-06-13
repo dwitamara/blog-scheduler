@@ -8,15 +8,14 @@
           <h1 class="header-title">Upload Artikel dari Excel</h1>
         </div>
 
-<!-- Token & Publish ID Input -->
-<div class="token-section">
-  <label for="token" class="token-label">Token Hashnode Anda:</label>
-  <input type="text" id="token" v-model="token" class="token-input" placeholder="Masukkan token Hashnode Anda">
+        <!-- Token & Publish ID Input -->
+        <div class="token-section">
+          <label for="token" class="token-label">Token Hashnode Anda:</label>
+          <input type="text" id="token" v-model="token" class="token-input" placeholder="Masukkan token Hashnode Anda">
 
-  <label for="publishId" class="token-label">Publish ID:</label>
-  <input type="text" id="publishId" v-model="publishId" class="token-input" placeholder="Masukkan publish ID Anda">
-</div>
-
+          <label for="publishId" class="token-label">Publish ID:</label>
+          <input type="text" id="publishId" v-model="publishId" class="token-input" placeholder="Masukkan publish ID Anda">
+        </div>
 
         <!-- Upload Box -->
         <div class="upload-box">
@@ -49,6 +48,11 @@
           <span v-if="!loading">Save as Draft</span>
           <span v-else>Uploading...</span>
         </button>
+
+        <!-- Status Notification -->
+        <div v-if="statusMessage" :class="['status-box', isSuccess ? 'success' : 'error']">
+          {{ statusMessage }}
+        </div>
 
         <!-- Footer -->
         <div class="card-footer">
@@ -94,53 +98,59 @@ export default {
         this.$refs.fileInput.value = null;
       }
     },
-async saveAsDraft() {
-  if (!this.selectedFile || !this.token) {
-    this.setStatus('Token dan file wajib diisi.', false);
-    return;
-  }
+    async saveAsDraft() {
+      if (!this.selectedFile || !this.token) {
+        this.setStatus('Token dan file wajib diisi.', false);
+        return;
+      }
 
-  const formData = new FormData();
-  formData.append('xlsx_file', this.selectedFile);
-  formData.append('token', this.token);
-  formData.append('publish_id', this.publishId);
+      const formData = new FormData();
+      formData.append('xlsx_file', this.selectedFile);
+      formData.append('token', this.token);
+      formData.append('publish_id', this.publishId);
 
-  this.loading = true;
+      this.loading = true;
 
-  try {
-    const response = await fetch('http://127.0.0.1:8000/api/upload-excel', {
-      method: 'POST',
-      body: formData,
-    });
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/upload-excel', {
+          method: 'POST',
+          body: formData,
+        });
 
-    const result = await response.json();
-    console.log("HASIL:", result); // Tambahan debug
+        const result = await response.json();
+        console.log("HASIL:", result);
 
-    if (response.ok) {
-      this.setStatus(result.message || 'Berhasil diupload!', true);
-      this.resetForm(); // Reset file dan input
-    } else {
-      this.setStatus(result.message || 'Gagal mengunggah.', false);
-    }
-  } catch (error) {
-    console.error("Upload error:", error); // Untuk debug DevTools
-    this.setStatus('Terjadi kesalahan saat mengunggah.', false);
-  } finally {
-    this.loading = false;
-  }
-},
-
+        if (response.ok) {
+          this.setStatus(result.message || 'Berhasil diupload!', true);
+          this.resetForm();
+        } else {
+          this.setStatus(result.message || 'Gagal mengunggah.', false);
+        }
+      } catch (error) {
+        console.error("Upload error:", error);
+        this.setStatus('Terjadi kesalahan saat mengunggah.', false);
+      } finally {
+        this.loading = false;
+      }
+    },
     setStatus(message, success) {
-      this.statusMessage = message;
-      this.isSuccess = success;
-      this.isError = !success;
+  this.statusMessage = message;
+  this.isSuccess = success;
+  this.isError = !success;
+    },
+    resetForm() {
+      this.selectedFile = null;
+      this.publishId = '';
+      if (this.$refs.fileInput) {
+        this.$refs.fileInput.value = null;
+      }
     }
   }
 };
 </script>
 
-
 <style scoped>
+/* Semua gaya sebelumnya tetap */
 .fullscreen-bg {
   position: fixed;
   top: 0;
@@ -204,25 +214,6 @@ async saveAsDraft() {
   font-size: 0.95rem;
 }
 
-.save-token-button {
-  align-self: flex-start;
-  background: #3498db;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.2s ease;
-}
-
-.save-token-button:hover {
-  background: #2980b9;
-}
-
 .drop-zone {
   padding: 30px;
   cursor: pointer;
@@ -251,10 +242,6 @@ async saveAsDraft() {
   font-size: 3.5rem;
   color: #27ae60;
   margin-bottom: 20px;
-}
-
-.instruction-text {
-  text-align: center;
 }
 
 .main-instruction {
@@ -291,18 +278,6 @@ async saveAsDraft() {
   flex: 1;
   font-size: 0.95rem;
   word-break: break-word;
-}
-
-.remove-icon {
-  color: #e74c3c;
-  font-size: 1.2rem;
-  cursor: pointer;
-  margin-left: 10px;
-  transition: color 0.2s ease;
-}
-
-.remove-icon:hover {
-  color: #c0392b;
 }
 
 .upload-button {
@@ -353,5 +328,26 @@ async saveAsDraft() {
 .info-icon {
   margin-right: 6px;
   color: #3498db;
+}
+
+.status-box {
+  margin: 0 30px 20px;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.status-box.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-box.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
 }
 </style>
