@@ -2,8 +2,8 @@ name: Post to Hashnode
 
 on:
   schedule:
-    - cron: '0 3 * * *' # Setiap hari jam 10.00 WIB
-  workflow_dispatch:      # Untuk trigger manual
+    - cron: '0 3 * * *'  # Setiap hari jam 10.00 WIB
+  workflow_dispatch:       # Bisa dijalankan manual
 
 jobs:
   post-to-hashnode:
@@ -22,9 +22,11 @@ jobs:
 
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
+        working-directory: backend
 
       - name: Copy .env
-        run: cp backend/.env.github backend/.env
+        run: cp .env.github .env
+        working-directory: backend
 
       - name: Generate App Key
         run: php artisan key:generate
