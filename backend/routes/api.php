@@ -2,6 +2,6 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ArtikelController;
+use App\Http\Controllers\XlsxController;
 
-Route::post('/upload-excel', [ArtikelController::class, 'uploadExcel']);
+Route::post('/upload-excel', [XlsxController::class, 'handleUpload']);

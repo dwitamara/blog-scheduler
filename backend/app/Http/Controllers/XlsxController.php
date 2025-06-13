@@ -3,43 +3,69 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class XlsxController extends Controller
 {
     public function showForm()
     {
-        return view('upload'); // Optional legacy form view
+        return view('upload'); // Bisa dihapus kalau tidak dipakai
     }
 
     public function handleUpload(Request $request)
     {
+        // Validasi input
         $request->validate([
-            'xlsx_file' => 'required|mimes:xlsx',
+            'xlsx_file' => 'required|file|mimes:xlsx,xls',
+            'token' => 'required|string',
+            'publish_id' => 'nullable|string',
         ]);
 
-        $file = $request->file('xlsx_file')->getPathname();
-        $rows = $this->readSimpleXlsx($file);
+        try {
+            $file = $request->file('xlsx_file')->getPathname();
+            $token = $request->input('token');
+            $publishId = $request->input('publish_id');
 
-        // Ensure queue folder exists
-        $queuePath = storage_path('app/queue');
-        if (!is_dir($queuePath)) mkdir($queuePath, 0777, true);
+            $rows = $this->readSimpleXlsx($file);
 
-        foreach ($rows as $index => $row) {
-            if ($index === 0) continue; // skip header
+            if (empty($rows)) {
+                return response()->json(['message' => '❌ Gagal membaca isi file Excel.'], 400);
+            }
 
-            [$title, $htmlContent, $imageUrl, $scheduledDate] = $row;
+            // Pastikan folder queue ada
+            $queuePath = storage_path('app/queue');
+            if (!is_dir($queuePath)) {
+                mkdir($queuePath, 0777, true);
+            }
 
-            $filename = $queuePath . "/post_{$index}.json";
-            file_put_contents($filename, json_encode([
-                'title' => $title,
-                'content' => $htmlContent,
-                'image' => $imageUrl,
-                'scheduled_date' => $scheduledDate
-            ], JSON_PRETTY_PRINT));
+            foreach ($rows as $index => $row) {
+                if ($index === 0) continue; // Skip header
+
+                // Validasi jumlah kolom
+                if (count($row) < 4) {
+                    Log::warning("❗ Baris ke-$index tidak lengkap. Data: " . json_encode($row));
+                    continue;
+                }
+
+                [$title, $htmlContent, $imageUrl, $scheduledDate] = $row;
+
+                $filename = $queuePath . "/post_{$index}.json";
+                file_put_contents($filename, json_encode([
+                    'title' => $title,
+                    'content' => $htmlContent,
+                    'image' => $imageUrl,
+                    'scheduled_date' => $scheduledDate,
+                    'token' => $token,
+                    'publish_id' => $publishId,
+                ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            }
+
+            return response()->json(['message' => '✅ Upload & queue successful']);
+        } catch (\Exception $e) {
+            // Tangani error agar tidak error 500 misterius
+            Log::error('❌ Upload error: ' . $e->getMessage());
+            return response()->json(['message' => 'Server error: ' . $e->getMessage()], 500);
         }
-
-        return response()->json(['message' => 'Upload & Queue Successful']);
     }
 
     private function readSimpleXlsx($filePath)
@@ -70,6 +96,7 @@ class XlsxController extends Controller
             $zip->close();
             return $data;
         }
+
         return [];
     }
 }
