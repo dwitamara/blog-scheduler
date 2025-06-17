@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use League\HTMLToMarkdown\HtmlConverter;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 
@@ -33,12 +34,12 @@ class PostToHashnode extends Command
 
             $this->info("Posting: " . $post['title']);
 
-            // Buat konten Markdown yang menyisipkan gambar dan isi konten
-            $contentMarkdown = <<<MD
-            ![Gambar]( {$post['image']} )
+            // Konten Markdown (menyisipkan gambar dan isi konten)
+$converter = new HtmlConverter(['strip_tags' => true,]);
 
-            {$post['content']}
-            MD;
+$markdownBody = $converter->convert($post['content'] ?? '');
+$contentMarkdown = "![Gambar]({$post['image']})\n\n" . $markdownBody;
+$this->line("Converted Markdown:\n" . $contentMarkdown);
 
             $mutation = <<<GQL
                 mutation publishPost(\$input: publishPostInput!) {

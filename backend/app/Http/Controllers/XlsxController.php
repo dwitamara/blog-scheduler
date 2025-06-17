@@ -48,6 +48,8 @@ class XlsxController extends Controller
                 }
 
                 [$title, $htmlContent, $imageUrl, $scheduledDate] = $row;
+                
+                $htmlContent = html_entity_decode($htmlContent, ENT_QUOTES | ENT_HTML5);
 
                 $convertedImage = $this->convertGoogleDriveLink($imageUrl);
 
