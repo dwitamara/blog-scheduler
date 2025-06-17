@@ -2,7 +2,7 @@ name: Post to Hashnode
 
 on:
   schedule:
-    - cron: '0 3 * * *'  # Setiap hari jam 10.00 WIB
+    - cron: '0 5 * * *'  # Setiap hari jam 10.00 WIB
   workflow_dispatch:       # Bisa dijalankan manual
 
 jobs:

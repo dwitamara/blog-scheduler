@@ -35,27 +35,28 @@ class PostToHashnode extends Command
 
             // Buat konten Markdown yang menyisipkan gambar dan isi konten
             $contentMarkdown = <<<MD
-![Gambar]( {$post['image']} )
+            ![Gambar]( {$post['image']} )
 
-{$post['content']}
-MD;
+            {$post['content']}
+            MD;
 
             $mutation = <<<GQL
-mutation CreateDraft(\$input: CreateDraftInput!) {
-  createDraft(input: \$input) {
-    draft {
-      title
-      slug
-    }
-  }
-}
-GQL;
+                mutation publishPost(\$input: publishPostInput!) {
+                    publishPost(input: \$input) {
+                        post {
+                            title
+                            slug
+                        }
+                    }
+                }
+            GQL;
 
             $variables = [
                 'input' => [
                     'title' => $post['title'],
                     'contentMarkdown' => $contentMarkdown,
                     'publicationId' => $publicationId,
+                    'tags' => $post['tags'] ?? [],
                 ]
             ];
 
@@ -69,7 +70,7 @@ GQL;
 
             if ($response->successful()) {
                 $data = $response->json();
-                if (!empty($data['data']['createDraft']['draft'])) {
+                if (isset($data['data']['publishPost']['post'])) {
                     $this->info("✅ Successfully posted: " . $post['title']);
                     unlink($file); // Remove from queue
                 } else {
