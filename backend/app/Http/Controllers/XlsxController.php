@@ -10,7 +10,7 @@ class XlsxController extends Controller
 {
     public function showForm()
     {
-        return view('upload');
+        return view('Home');
     }
 
     public function handleUpload(Request $request)
